@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pandas
+faiss-cpu
+langchain
+langchain-community
+langchain-google-genai
+sentence-transformers
+transformers
+huggingface-hub
+google-cloud
