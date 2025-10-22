@@ -10,12 +10,12 @@ load_dotenv()
 
 app = FastAPI(title="Classificador Jurídico RAG")
 
-# Permitir CORS do frontend local
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ou coloque a URL do frontend para segurança
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["https://classificadorgjur.vercel.app"],  # frontend permitido
+    allow_credentials=True,
+    allow_methods=["*"],  # permite GET, POST etc.
+    allow_headers=["*"],  # permite headers como Content-Type
 )
 
 class ClassifyRequest(BaseModel):
