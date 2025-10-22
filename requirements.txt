@@ -1,4 +1,10 @@
 fastapi
 uvicorn
 python-dotenv
-pydantic
+pandas
+faiss-cpu
+langchain
+langchain-community
+langchain-core
+langchain-google-genai
+sentence-transformers
