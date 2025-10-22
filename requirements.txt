@@ -1,12 +1,4 @@
 fastapi
-uvicorn[standard]
+uvicorn
 python-dotenv
-pandas
-faiss-cpu
-langchain
-langchain-community
-langchain-google-genai
-sentence-transformers
-transformers
-huggingface-hub
-google-cloud
+pydantic

@@ -1857,37 +1857,68 @@ def build_chain():
     if not api_key:
         raise ValueError("GOOGLE_API_KEY não encontrada nas variáveis de ambiente.")
 
-    # --- Vector store (exemplos) ---
-    model_name = "sentence-transformers/all-MiniLM-L6-v2"
-    embeddings = HuggingFaceEmbeddings(model_name=model_name)
-    vectorstore = FAISS.from_texts(texts=exemplos_classificados, embedding=embeddings)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
+    try:
+        # IMPORTS PESADOS DYNAMICOS
+        import importlib
+        FAISS = importlib.import_module("langchain_community.vectorstores").FAISS
+        HuggingFaceEmbeddings = importlib.import_module("langchain_community.embeddings").HuggingFaceEmbeddings
+        ChatPromptTemplate = importlib.import_module("langchain_core.prompts").ChatPromptTemplate
+        ChatGoogleGenerativeAI = importlib.import_module("langchain_google_genai").ChatGoogleGenerativeAI
+        RunnablePassthrough = importlib.import_module("langchain.schema.runnable").RunnablePassthrough
+        StrOutputParser = importlib.import_module("langchain.schema.output_parser").StrOutputParser
 
-    # --- Prompt template ---
-    opcoes_de_classificacao = formatar_arvore_como_string(CSV_DATA)
-    template = """
-    Você é um assistente especialista em classificação de jurisprudência do Tribunal de Contas. Sua tarefa é analisar um novo documento, se inspirar nos exemplos fornecidos e, em seguida, escolher a classificação mais apropriada de uma lista de opções válidas.
+        print("🔹 Módulos RAG carregados dinamicamente")
 
-    ---
-    INSPIRAÇÃO (Exemplos de documentos parecidos e suas classificações):
-    {context}
-    ---
-    OPÇÕES VÁLIDAS (A árvore de classificação completa):
-    {classification_options}
-    ---
-    TAREFA:
-    Analisando o novo documento abaixo e usando os exemplos como inspiração, ESCOLHA a classificação MAIS ADEQUADA da lista de OPÇÕES VÁLIDAS.
+        # --- Vector store ---
+        model_name = "sentence-transformers/all-MiniLM-L6-v2"
+        embeddings = HuggingFaceEmbeddings(model_name=model_name)
+        vectorstore = FAISS.from_texts(texts=exemplos_classificados, embedding=embeddings)
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
 
-    Novo Documento para Classificar:
-    {question}
+        # --- Prompt template ---
+        opcoes_de_classificacao = formatar_arvore_como_string(CSV_DATA)
+        template = """
+Você é um assistente especialista em classificação de jurisprudência do Tribunal de Contas. Sua tarefa é analisar um novo documento, se inspirar nos exemplos fornecidos e, em seguida, escolher a classificação mais apropriada de uma lista de opções válidas.
 
-    Sua resposta DEVE OBRIGATORIAMENTE ser uma das opções da lista e estar no formato:
-    Área: [Nome da Área] | Tema: [Nome do Tema] | Subtema: [Nome do Subtema] (faça um ranking das 2 classificacoes de area tema e subtema mais possiveis)
-    Motivo da classificação
+---
+INSPIRAÇÃO (Exemplos de documentos parecidos e suas classificações):
+{context}
+---
+OPÇÕES VÁLIDAS (A árvore de classificação completa):
+{classification_options}
+---
+TAREFA:
+Analisando o novo documento abaixo e usando os exemplos como inspiração, ESCOLHA a classificação MAIS ADEQUADA da lista de OPÇÕES VÁLIDAS.
 
-    """
-    prompt = ChatPromptTemplate.from_template(template)
+Novo Documento para Classificar:
+{question}
 
+Sua resposta DEVE OBRIGATORIAMENTE ser uma das opções da lista e estar no formato:
+Área: [Nome da Área] | Tema: [Nome do Tema] | Subtema: [Nome do Subtema] (faça um ranking das 2 classificacoes de area tema e subtema mais possiveis)
+Motivo da classificação
+"""
+        prompt = ChatPromptTemplate.from_template(template)
+
+        # --- LLM ---
+        llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0, convert_system_message_to_human=True)
+
+        # --- Fluxo híbrido RAG ---
+        chain = (
+            {
+                "context": retriever,
+                "question": RunnablePassthrough(),
+                "classification_options": lambda x: opcoes_de_classificacao
+            }
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+
+        return chain
+
+    except ModuleNotFoundError as e:
+        print("⚠️ Dependência não encontrada:", e)
+        return None
     # --- LLM ---
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0, convert_system_message_to_human=True)
 
