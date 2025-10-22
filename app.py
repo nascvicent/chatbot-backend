@@ -13,8 +13,7 @@ app = FastAPI(title="Classificador Jurídico RAG")
 # Permitir CORS do frontend local
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173","http://localhost:3000"],  # ajusta se precisar
-    allow_credentials=True,
+    allow_origins=["*"],  # ou coloque a URL do frontend para segurança
     allow_methods=["*"],
     allow_headers=["*"],
 )
